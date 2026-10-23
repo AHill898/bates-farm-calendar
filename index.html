@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset='utf-8' />
+  <!-- FullCalendar CSS & JS Dependencies -->
+  <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js'></script>
+  <script src='https://cdn.jsdelivr.net/npm/@fullcalendar/google-calendar@6.1.10/index.global.min.js'></script>
+  
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      background-color: transparent;
+      font-family: Arial, sans-serif;
+    }
+
+    .calendar-card {
+      background-color: #ffffff;
+      border-radius: 16px;
+      padding: 10px 14px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+      box-sizing: border-box;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    #calendar {
+      width: 100%;
+      height: 100%;
+      flex: 1;
+    }
+
+    /* Toolbar & Buttons */
+    .fc .fc-toolbar-title {
+      font-size: 1.15em;
+      font-weight: bold;
+      color: #333333;
+    }
+
+    .fc .fc-button-primary {
+      background-color: #1089c6;
+      border-color: #1089c6;
+      color: #ffffff;
+      text-transform: capitalize;
+      box-shadow: none !important;
+      padding: 4px 8px !important;
+      font-size: 0.85em !important;
+    }
+
+    .fc .fc-button-primary:hover {
+      background-color: #0d6fa1;
+      border-color: #0d6fa1;
+    }
+
+    .fc .fc-day-today {
+      background-color: #e8f5e9 !important;
+    }
+
+    /* Event Styling */
+    .fc-daygrid-event {
+      border-radius: 4px;
+      padding: 2px 4px !important;
+      cursor: pointer;
+    }
+
+    .fc-event-main {
+      font-size: 0.8em;
+      white-space: normal !important;
+      word-break: break-word;
+    }
+
+    /* Presentation Card Modal */
+    #event-modal {
+      border: none;
+      border-radius: 16px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+      padding: 20px;
+      max-width: 400px;
+      width: 90%;
+    }
+
+    #event-modal::backdrop {
+      background: rgba(0, 0, 0, 0.5);
+    }
+
+    #modal-image {
+      width: 100%;
+      max-height: 220px;
+      object-fit: contain;
+      background-color: #f9f9f9;
+      border-radius: 8px;
+      margin-bottom: 12px;
+      display: none;
+    }
+
+    #modal-title {
+      margin-top: 0;
+      font-size: 1.2em;
+      color: #1089c6;
+    }
+
+    .modal-detail {
+      margin: 8px 0;
+      font-size: 0.9em;
+      color: #444;
+      line-height: 1.4;
+    }
+
+    #close-modal-btn {
+      margin-top: 14px;
+      background-color: #1089c6;
+      color: white;
+      border: none;
+      padding: 6px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+      float: right;
+    }
+  </style>
+</head>
+<body>
+
+<div class="calendar-card">
+  <div id='calendar'></div>
+</div>
+
+<!-- Presentation-style Event Card Modal -->
+<dialog id="event-modal">
+  <img id="modal-image" src="" alt="Event Flyer" />
+  <h3 id="modal-title"></h3>
+  <div class="modal-detail" id="modal-time"></div>
+  <div class="modal-detail" id="modal-location"></div>
+  <div class="modal-detail" id="modal-description"></div>
+  <button id="close-modal-btn" onclick="document.getElementById('event-modal').close()">Close</button>
+</dialog>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    var modal = document.getElementById('event-modal');
+    var calendarEl = document.getElementById('calendar');
+    var isMobile = window.innerWidth < 500;
+
+    var calendar = new FullCalendar.Calendar(calendarEl, {
+      initialView: isMobile ? 'listMonth' : 'dayGridMonth',
+      height: '100%',
+      expandRows: true,
+      headerToolbar: {
+        left: 'prev,next today',
+        center: 'title',
+        right: ''
+      },
+      googleCalendarApiKey: 'AIzaSyDedcllUIRIUNsS-W5mnGwvamGxyerqowY',
+
+      // Event click handling: Keywords first, Description URL fallback second
+      eventClick: function(info) {
+        info.jsEvent.preventDefault();
+        var event = info.event;
+
+        document.getElementById('modal-title').innerText = event.title;
+        
+        // Format Time
+        var timeStr = event.start.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
+        if (!event.allDay) {
+          timeStr += ' @ ' + event.start.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+        }
+        document.getElementById('modal-time').innerHTML = '<strong>When:</strong> ' + timeStr;
+
+        // Location
+        var loc = event.extendedProps.location;
+        document.getElementById('modal-location').innerHTML = loc ? '<strong>Where:</strong> ' + loc : '';
+
+        // --- IMAGE LOGIC (Keywords -> Fallback to Description URL) ---
+        var title = event.title.toLowerCase();
+        var desc = event.extendedProps.description || '';
+        var imgTag = document.getElementById('modal-image');
+        var assignedImage = '';
+
+        // 1. Check Keywords in Title
+        if (title.includes('tso') || title.includes('the shoot out series')) {
+          assignedImage = 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTctjUlsxaGVJ5qKDg28tRFf5CReEKayGVUNhgy5mlEgTr0Bxlm_YIpWbeu&s=10';
+        } else if (title.includes('asa')) {
+          assignedImage = 'https://bunny-wp-pullzone-emcyfkbcqt.b-cdn.net/wp-content/uploads/2022/11/ASA-Archery-Logo-Flat-300x188.jpg';
+        }
+
+        // 2. If no keyword matched, check description for a public URL fallback
+        if (!assignedImage) {
+          var urlRegex = /(https?:\/\/[^\s]+?\.(?:png|jpg|jpeg|webp))/i;
+          var match = desc.match(urlRegex);
+          if (match) {
+            assignedImage = match[1];
+            // Clean the raw URL out of the text description display
+            desc = desc.replace(match[1], '').trim();
+          }
+        }
+
+        // Display Image if found
+        if (assignedImage) {
+          imgTag.src = assignedImage;
+          imgTag.style.display = 'block';
+        } else {
+          imgTag.src = '';
+          imgTag.style.display = 'none';
+        }
+
+        document.getElementById('modal-description').innerHTML = desc ? '<strong>Details:</strong> ' + desc : '';
+        modal.showModal();
+      },
+
+      // Pulls all 3 specified Google Calendars with unique color-coding
+      eventSources: [
+        {
+          googleCalendarId: 'c_9e733653320bf24d89466c86315dd7e039631cb0ebfd26bead4df92ed0c0127f@group.calendar.google.com',
+          color: '#b7d8ee', /* Blue - Archery */
+          textColor: '#000000'
+        },
+        {
+          googleCalendarId: 'c_7867a0d287cd561ebf17b6bf616741d5af180aae45ea6fdb04293ea83f3f88ee@group.calendar.google.com',
+          color: '#d5eec3', /* Green - Bates Farm Events */
+          textColor: '#000000'
+        },
+        {
+          googleCalendarId: 'c_4ee3bace10effb26a837d73b21edbd3113750a9f0f17b376addbf0a436a58612@group.calendar.google.com',
+          color: '#fffade', /* Yellow - Bates Farm Kids Classes */
+          textColor: '#000000'
+        }
+      ]
+    });
+
+    calendar.render();
+  });
+</script>
+
+</body>
+</html>
